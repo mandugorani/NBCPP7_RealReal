@@ -91,8 +91,9 @@ void AMyDronePawn::MoveForward(const FInputActionValue& Value)
 
 	float DeltaTime = GetWorld()->GetDeltaSeconds();
 
-	Velocity.X += Input * Acceleration * SpeedMultiplier * DeltaTime;
-	Velocity.X = FMath::Clamp(Velocity.X, -MaxSpeed, MaxSpeed);
+	FVector Forward = Camera->GetForwardVector();
+	Velocity += Forward * Input * Acceleration * SpeedMultiplier * DeltaTime;
+	Velocity = Velocity.GetClampedToMaxSize(MaxSpeed);
 }
 
 void AMyDronePawn::MoveRight(const FInputActionValue& Value)
@@ -108,9 +109,11 @@ void AMyDronePawn::MoveRight(const FInputActionValue& Value)
 
 	float DeltaTime = GetWorld()->GetDeltaSeconds();
 
-	Velocity.Y += Input * Acceleration * SpeedMultiplier * DeltaTime;
-	Velocity.Y = FMath::Clamp(Velocity.Y, -MaxSpeed, MaxSpeed);
+	FVector Right = Camera->GetRightVector();
+	Velocity += Right * Input * Acceleration * SpeedMultiplier * DeltaTime;
+	Velocity = Velocity.GetClampedToMaxSize(MaxSpeed);
 }
+
 
 void AMyDronePawn::MoveUp(const FInputActionValue& Value)
 {
@@ -119,6 +122,14 @@ void AMyDronePawn::MoveUp(const FInputActionValue& Value)
 
 	LastUpInput = Input; // (입력값 저장) 드론조작 개선해보기 0205
 
+	if (LastUpInput > 0) {
+		FallSpeed = 0.0f;
+		return;
+	}
+	if (IsGrounded() && Input < 0)
+	{
+		return; // 땅뚫고 내려가는거 고쳐보기 0205
+	}
 	Velocity.Z += Input * Acceleration * DeltaTime;
 	Velocity.Z = FMath::Clamp(Velocity.Z, -MaxSpeed, MaxSpeed);
 }
@@ -126,18 +137,34 @@ void AMyDronePawn::MoveUp(const FInputActionValue& Value)
 void AMyDronePawn::Turn(const FInputActionValue& Value)
 {
 	float Input = Value.Get<float>();
+
+	if (IsGrounded() && Input < 0)
+	{
+		return; 
+	}
 	DroneRotation.Yaw += Input;
 }
 
 void AMyDronePawn::LookUp(const FInputActionValue& Value)
 {
 	float Input = Value.Get<float>();
+
+	if (IsGrounded() && Input < 0)
+	{
+		return;
+	}
 	DroneRotation.Pitch += Input;
 }
 
 void AMyDronePawn::Roll(const FInputActionValue& Value)
 {
 	float Input = Value.Get<float>();
+
+	if (IsGrounded() && Input < 0)
+	{
+		return;
+	}
+
 	TiltAngle += Input * 5.0f;
 }
 
@@ -149,23 +176,32 @@ void AMyDronePawn::CalculateTilt()
 
 void AMyDronePawn::ApplyGravity(float DeltaTime)
 {
+	if (IsGrounded()) {
+		FallSpeed = 0.0f;
+		Velocity.Z = 0.0f;
+		return;
+	} // IsGrounded와의 충돌 해결 0205
+
 	if (FMath::IsNearlyZero(LastUpInput))
 	{
 		FallSpeed = 0.0f;
-		Velocity.Z = 0.0f;
-	}
-	else
-	{
+		if (GetActorLocation().Z <= 0.0f)
+		{
+			Velocity.Z = 0.0f; // 땅0 0205
+		}
+	}else{
+
 		if (GetActorLocation().Z > 0.0f)
 		{
 			FallSpeed += Gravity * DeltaTime;
-		}
-		else
-		{
+		}else{
+
 			FallSpeed = 0.0f;
 		}
 		Velocity.Z += FallSpeed * DeltaTime;
 	}
+
+	Velocity.Z = FMath::Clamp(Velocity.Z, -MaxSpeed, MaxSpeed); // 코 0205
 }
 
 void AMyDronePawn::CameraTurn(const FInputActionValue& Value)
@@ -189,3 +225,24 @@ void AMyDronePawn::CameraLookUp(const FInputActionValue& Value)
 		SpringArm->SetRelativeRotation(NewRot);
 	}
 }
+
+
+bool AMyDronePawn::IsGrounded()
+{
+	FVector Start = GetActorLocation();
+	FVector End = Start - FVector(0.0f, 0.0f, 100.0f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
+	if (bHit)
+	{
+		FVector NewLocation = GetActorLocation();
+		NewLocation.Z = HitResult.Location.Z + 100.0f; // test(공중에 살짝 뜨게 하기)
+		SetActorLocation(NewLocation);
+
+		Velocity.Z = 0.0f;
+	}
+
+	return bHit;
+} //베껴온코드(Line Trace) 0205

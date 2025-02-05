@@ -47,12 +47,12 @@ void AMyPlayerController::OnSwitchPawn(const FInputActionValue& Value)
 			// FVector SpawnLocation = CurrentPawn->GetActorLocation(); 에서 변경
 			FRotator SpawnRotation = CurrentPawn->GetActorRotation();
 
-			DronePawn = GetWorld()->SpawnActor<AMyDronePawn>(AMyDronePawn::StaticClass(), NewSpawnLocation, SpawnRotation, SpawnParams);
+			DronePawn = GetWorld()->SpawnActor<AMyDronePawn>(DronePawnClass, NewSpawnLocation, SpawnRotation, SpawnParams);
 		}
 		Possess(DronePawn);
 	} // 캐릭터 - 드론 전환 0204
 	
-	else if (CurrentPawn->IsA(AMyDronePawn::StaticClass()))
+	else if (CurrentPawn->IsA(DronePawnClass))
 	{
 		if (CharacterPawn)
 		{

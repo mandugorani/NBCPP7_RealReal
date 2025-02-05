@@ -28,6 +28,11 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     UInputAction* SwitchPawnAction;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Switch")
+    TSubclassOf<AMyDronePawn> DronePawnClass;
+    // 코파일럿 0205
+    // bp_drone~ 이 아닌 코드 클래스 drone을 spawn하는 문제를 해결
+    // c++클래스 drone을 스폰해서 bp_drone의 설정 반영 안되는 문제
 private:
     AMyCharacterPawn* CharacterPawn;
     AMyDronePawn* DronePawn;

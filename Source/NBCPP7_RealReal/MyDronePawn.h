@@ -98,5 +98,6 @@ private:
 	void Roll(const FInputActionValue& Value);
 	void CameraTurn(const FInputActionValue& Value);
 	void CameraLookUp(const FInputActionValue& Value);
+	bool IsGrounded();
 };
 
